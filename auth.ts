@@ -1,40 +1,43 @@
+import { PrismaAdapter } from "@auth/prisma-adapter";
 import NextAuth, { NextAuthConfig } from "next-auth";
 import Github from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
+import prisma from "./db";
 
-export const config: NextAuthConfig = {
-    providers: [Github({
-      clientId: process.env.AUTH_GITHUB_ID,
-      clientSecret: process.env.AUTH_GITHUB_SECRET,
+// NextAuth 設定
+export const authOptions: NextAuthConfig = {
+  adapter: PrismaAdapter(prisma),
+  providers: [
+    Github({
+      clientId: process.env.AUTH_GITHUB_ID!,
+      clientSecret: process.env.AUTH_GITHUB_SECRET!,
     }),
-    Google({ 
-       clientId:process.env.AUTH_GOOGLE_ID,
-       clientSecret:process.env.AUTH_GOOGLE_SECRET,
-       authorization:{
+    Google({
+      clientId: process.env.AUTH_GOOGLE_ID!,
+      clientSecret: process.env.AUTH_GOOGLE_SECRET!,
+      authorization: {
         params: {
           prompt: "consent",
           access_type: "offline",
           response_type: "code",
         },
-       }
-     }),],
-    basePath: "/api/auth",
-    callbacks: {
-      authorized({ request, auth }) {
-        try {
-          const { pathname } = request.nextUrl;
-          if (pathname === "/protected-page") return !!auth;
-          return true;
-        } catch (err) {
-          console.log(err);
-        }
       },
-      jwt({ token, trigger, session }) {
-        // console.log(token);
-        if (trigger === "update") token.name = session.user.name;
-        return token;
-      },
+    }),
+  ],
+  session: { strategy: "jwt" },
+  callbacks: {
+    authorized({ request, auth }) {
+      const { pathname } = request.nextUrl;
+      if (pathname === "/protected-page") return !!auth; // Ensure auth for protected routes
+      return true;
     },
+    jwt({ token, trigger, session }) {
+      if (trigger === "update" && session?.user?.name) {
+        token.name = session.user.name; // Update token on session change
+      }
+      return token;
+    },
+  },
 };
 
-export const { handlers, auth, signIn, signOut } = NextAuth(config);
+export const { handlers, auth, signIn, signOut } = NextAuth(authOptions);
