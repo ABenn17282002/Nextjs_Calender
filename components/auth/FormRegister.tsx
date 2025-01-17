@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { useState } from "react";
 import Link from "next/link";
 import { signUpCredentials } from "@/lib/actions";
-import RegisterButton from "../button";
+import { RegisterButton } from "@/components/button";
 
 export default function FormRegister() {
   const [state, formAction] = useActionState(signUpCredentials, null);

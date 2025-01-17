@@ -1,48 +1,102 @@
 "use server";
 
-import { RegisterSchema } from "@/lib/zod"; // 入力データのバリデーションスキーマ
-import { hashSync } from "bcrypt-ts"; // パスワードのハッシュ化用
+import { RegisterSchema, SignInSchema } from "@/lib/zod"; // バリデーションスキーマ
 import { prisma } from "@/lib/prisma"; // Prisma クライアント
 import { redirect } from "next/navigation"; // ページ遷移用
+import { hashPassword, verifyPassword } from "@/lib/hashFunctions"; // ハッシュ関数
+import { signIn } from '@/auth';
+import { AuthError } from "next-auth";
 
-// サインアップ処理を行う関数
+// sign Up Credentials action
 export const signUpCredentials = async (
-  prevState:unknown,
+  prevState: unknown,
   formData: FormData
 ) => {
-  // 1. フォームデータをバリデーション
   const validatedFields = RegisterSchema.safeParse(
     Object.fromEntries(formData.entries())
   );
 
-  // 1.1 バリデーションが失敗した場合、エラーメッセージを返す
   if (!validatedFields.success) {
     return {
       error: validatedFields.error.flatten().fieldErrors,
     };
   }
 
-  // 2. バリデーションに成功した場合、データを取得
   const { name, email, password } = validatedFields.data;
-
-  // 3. パスワードをハッシュ化
-  const hashedPassword = hashSync(password, 10);
+  const salt = crypto.randomUUID(); // ランダムなソルトを生成
+  const hashedPassword = await hashPassword(password, salt);
 
   try {
-    // 4. データベースに新規ユーザーを作成
     await prisma.user.create({
       data: {
         name,
         email,
         password: hashedPassword,
+        salt,
       },
     });
-
-  } catch (error)  {
-    // 5. エラーが発生した場合、エラーメッセージを返す
-    void error;
+  } catch (error) {
+    console.error(error);
     return { message: "Failed to register user" };
   }
-    // 6.ユーザー作成後、別のページにリダイレクト
-    redirect("/login");
+
+  redirect("/login");
+};
+
+// sign In Credentials action
+export const signInCredentials = async (
+  prevState: unknown,
+  formData: FormData
+) => {
+    // フォームデータを Zod スキーマで検証
+    const validatedFields = SignInSchema.safeParse(
+    Object.fromEntries(formData.entries())
+  );
+
+  if (!validatedFields.success) {
+    return {
+      error: validatedFields.error.flatten().fieldErrors,
+    };
+  }
+
+  const { email, password } = validatedFields.data;
+
+  try {
+    // ユーザーをデータベースから取得
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user || !user.password || !user.salt) {
+      return { message: "Invalid email or password." };
+    }
+
+    // 入力されたパスワードを検証
+    const isPasswordValid = await verifyPassword(password, user.salt, user.password);
+
+    if (!isPasswordValid) {
+      return { message: "Invalid email or password." };
+    }
+
+    // サインイン成功時の処理
+    await signIn("credentials", {
+      email,
+      password,
+      redirectTo: "/dashboard",
+    });
+
+  } catch (error) {
+    // エラーが AuthError の場合、適切なメッセージを返す
+    if (error instanceof AuthError) {
+      switch (error.type) {
+        case "CredentialsSignin":
+          return { message: "Invalid Credentials." };
+        default:
+          return { message: "Something went wrong." };
+      }
+    }
+
+    // その他のエラーは再スロー
+    throw error;
+  }
 };
