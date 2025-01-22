@@ -1,48 +1,67 @@
-
 "use client";
 
-import { useActionState } from "react";
 import { useState } from "react";
-import Link from "next/link";
-import { signInCredentials } from "@/lib/actions"; 
-import { LoginButton } from "@/components/button";
 
 export default function FormLogin() {
-  const [state, formAction] = useActionState(signInCredentials, null);
-
-  // パスワード表示/非表示の状態
-  const [showPassword, setShowPassword] = useState(false);
-
-  // フォームフィールドの状態を管理
+  const [error, setError] = useState<string | null>(null); // エラーメッセージを格納
   const [formValues, setFormValues] = useState({
     email: "",
     password: "",
   });
+  const [showPassword, setShowPassword] = useState(false); // パスワードの表示/非表示を制御
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-
     setFormValues((prev) => ({
       ...prev,
       [name]: value,
     }));
+  };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null); // エラーメッセージをリセット
+
+    const formData = {
+      email: formValues.email,
+      password: formValues.password,
+    };
+    
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json", // JSON を送信
+        },
+        body: JSON.stringify(formData), // JSON に変換して送信
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.message || "Login failed. Please try again."); // エラーメッセージを設定
+      } else if (result.redirectTo) {
+        window.location.href = result.redirectTo; // ダッシュボードにリダイレクト
+      }
+    } catch (error) {
+      console.error("Unexpected login error:", error);
+      setError("Something went wrong. Please try again later.");
+    }
   };
 
   const togglePasswordVisibility = () => {
-    setShowPassword((prev) => !prev);
+    setShowPassword((prev) => !prev); // パスワードの表示/非表示を切り替え
   };
 
   return (
-    <form action={formAction} className="space-y-6">
-      {state?.message ? (
-        <div
-            className="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-100"
-            role="alert"
-            >
-          <span className="font-medium">{state?.message}</span>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {error && (
+        <div className="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-100" role="alert">
+          {error}
         </div>
-        ) : null}
+      )}
+
+      {/* Email フィールド */}
       <div>
         <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-900">
           Email
@@ -55,17 +74,16 @@ export default function FormLogin() {
           onChange={handleInputChange}
           className="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg w-full p-2.5"
         />
-        <div aria-live="polite" aria-atomic="true">
-          <span className="text-sm text-red-500 mt-2">{state?.error?.email}</span>
-        </div>
       </div>
+
+      {/* Password フィールド */}
       <div>
         <label htmlFor="password" className="block mb-2 text-sm font-medium text-gray-900">
           Password
         </label>
         <div className="relative">
           <input
-            type={showPassword ? "text" : "password"}
+            type={showPassword ? "text" : "password"} // パスワードの表示/非表示を切り替え
             name="password"
             placeholder="*********"
             value={formValues.password}
@@ -80,17 +98,11 @@ export default function FormLogin() {
             {showPassword ? "Hide" : "Show"}
           </button>
         </div>
-        <div aria-live="polite" aria-atomic="true">
-          <span className="text-sm text-red-500 mt-2">{state?.error?.password}</span>
-        </div>
       </div>
-      <LoginButton/>
-      <p className="text-sm font-light text-gray-500">
-          Don&apos;t have an account yet? 
-        <Link href="/register">
-          <span className="font-medium pl-1 text-blue-600 hover:text-blue-700">Sign up here</span>
-        </Link>
-      </p>
+
+      <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded-lg">
+        Login
+      </button>
     </form>
   );
 }

@@ -1,17 +1,16 @@
 "use server";
 
-import { RegisterSchema, SignInSchema } from "@/lib/zod"; // バリデーションスキーマ
+import { RegisterSchema } from "@/lib/zod"; // バリデーションスキーマ
 import { prisma } from "@/lib/prisma"; // Prisma クライアント
 import { redirect } from "next/navigation"; // ページ遷移用
-import { hashPassword, verifyPassword } from "@/lib/hashFunctions"; // ハッシュ関数
-import { signIn } from '@/auth';
-import { AuthError } from "next-auth";
+import { hashPassword } from "@/lib/hashFunctions"; // ハッシュ関数
 
-// sign Up Credentials action
+// ユーザー登録のアクション
 export const signUpCredentials = async (
   prevState: unknown,
   formData: FormData
 ) => {
+  // Zod スキーマで検証
   const validatedFields = RegisterSchema.safeParse(
     Object.fromEntries(formData.entries())
   );
@@ -27,6 +26,7 @@ export const signUpCredentials = async (
   const hashedPassword = await hashPassword(password, salt);
 
   try {
+    // データベースにユーザーを作成
     await prisma.user.create({
       data: {
         name,
@@ -40,63 +40,36 @@ export const signUpCredentials = async (
     return { message: "Failed to register user" };
   }
 
+  // 登録後にログインページへリダイレクト
   redirect("/login");
 };
 
-// sign In Credentials action
-export const signInCredentials = async (
-  prevState: unknown,
-  formData: FormData
-) => {
-    // フォームデータを Zod スキーマで検証
-    const validatedFields = SignInSchema.safeParse(
-    Object.fromEntries(formData.entries())
-  );
-
-  if (!validatedFields.success) {
-    return {
-      error: validatedFields.error.flatten().fieldErrors,
-    };
-  }
-
-  const { email, password } = validatedFields.data;
-
+// ログインのアクション
+export const signInCredentials = async (formData: FormData) => {
   try {
-    // ユーザーをデータベースから取得
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (!user || !user.password || !user.salt) {
-      return { message: "Invalid email or password." };
+    // 環境変数からベース URL を取得
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+    if (!baseUrl) {
+      throw new Error("BASE URL is not defined in environment variables");
     }
 
-    // 入力されたパスワードを検証
-    const isPasswordValid = await verifyPassword(password, user.salt, user.password);
-
-    if (!isPasswordValid) {
-      return { message: "Invalid email or password." };
-    }
-
-    // サインイン成功時の処理
-    await signIn("credentials", {
-      email,
-      password,
-      redirectTo: "/dashboard",
+    // 絶対 URL を使用して API リクエストを送信
+    const response = await fetch(`${baseUrl}/api/auth/login`, {
+      method: "POST",
+      body: formData,
     });
 
+    const result = await response.json();
+
+    if (!response.ok) {
+      return { error: result.error, message: result.message };
+    }
+
+    return result;
   } catch (error) {
-    // エラーが AuthError の場合、適切なメッセージを返す
-    if (error instanceof AuthError) {
-      switch (error.type) {
-        case "CredentialsSignin":
-          return { message: "Invalid Credentials." };
-        default:
-          return { message: "Something went wrong." };
-      }
-    }
-
-    // その他のエラーは再スロー
-    throw error;
+    console.error("Login error:", error);
+    return { message: "Something went wrong. Please try again later." };
   }
 };
+
+
