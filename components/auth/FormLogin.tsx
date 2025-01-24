@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { LoginButton } from "../button";
 
 export default function FormLogin() {
   const [error, setError] = useState<string | null>(null); // エラーメッセージを格納
@@ -100,9 +101,7 @@ export default function FormLogin() {
         </div>
       </div>
 
-      <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded-lg">
-        Login
-      </button>
+      <LoginButton/>
     </form>
   );
 }
