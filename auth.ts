@@ -42,8 +42,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         if (!isPasswordValid) return null;
 
-        return user;
+        return { id: user.id, name: user.name, email: user.email };
       },
     }),
   ],
+  callbacks: {
+    // JWTをカスタマイズ
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id; // ユーザーIDをJWTトークンに追加
+        token.email = user.email;
+      }
+      return token;
+    },
+    // セッションデータをカスタマイズ
+    async session({ session, token }) {
+      if (token) {
+        session.user.id = token.id as string; // 型を明示的にキャスト
+        session.user.email = token.email ?? ""; // nullやundefinedを考慮
+      }
+      return session;
+    },
+  },
 });
