@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { LoginButton } from "../button";
+import Link from "next/link";
 
 export default function FormLogin() {
   const [error, setError] = useState<string | null>(null); // エラーメッセージを格納
@@ -100,8 +101,13 @@ export default function FormLogin() {
           </button>
         </div>
       </div>
-
       <LoginButton/>
+      <p className="text-sm font-light text-gray-500">
+          Don&apos;t have an account yet? 
+        <Link href="/register">
+          <span className="font-medium pl-1 text-blue-600 hover:text-blue-700">Sign up here</span>
+        </Link>
+      </p>
     </form>
   );
 }
