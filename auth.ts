@@ -49,18 +49,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     // JWTをカスタマイズ
     async jwt({ token, user }) {
+      console.log("JWT Callback - Before:", token);
       if (user) {
         token.id = user.id; // ユーザーIDをJWTトークンに追加
         token.email = user.email;
       }
+      console.log("JWT Callback - After:", token);
       return token;
     },
     // セッションデータをカスタマイズ
     async session({ session, token }) {
+      console.log("Session Callback - Before:", session);
       if (token) {
         session.user.id = token.id as string; // 型を明示的にキャスト
         session.user.email = token.email ?? ""; // nullやundefinedを考慮
       }
+      console.log("Session Callback - After:", session);
       return session;
     },
   },
