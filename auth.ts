@@ -47,25 +47,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    // JWTをカスタマイズ
-    async jwt({ token, user }) {
-      console.log("JWT Callback - Before:", token);
-      if (user) {
-        token.id = user.id; // ユーザーIDをJWTトークンに追加
-        token.email = user.email;
+    authorized({ auth, request: { nextUrl } }) {
+      const isLoggedIn = !!auth?.user;
+      const ProtectedRoutes = new Set(["/dashboard", "/user", "/product"]); // Set を使用
+  
+      if (!isLoggedIn && ProtectedRoutes.has(nextUrl.pathname)) {
+        return new Response(null, { status: 302, headers: { Location: "/login" } });
       }
-      console.log("JWT Callback - After:", token);
-      return token;
-    },
-    // セッションデータをカスタマイズ
-    async session({ session, token }) {
-      console.log("Session Callback - Before:", session);
-      if (token) {
-        session.user.id = token.id as string; // 型を明示的にキャスト
-        session.user.email = token.email ?? ""; // nullやundefinedを考慮
+  
+      if (isLoggedIn && nextUrl.pathname.startsWith("/login")) {
+        return new Response(null, { status: 302, headers: { Location: "/dashboard" } });
       }
-      console.log("Session Callback - After:", session);
-      return session;
+  
+      return true;
     },
   },
 });
