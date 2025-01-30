@@ -47,16 +47,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    authorized({ auth, request: { nextUrl } }) {
+    authorized({ auth, request }) {
+      const nextUrl = request.nextUrl;
       const isLoggedIn = !!auth?.user;
-      const ProtectedRoutes = new Set(["/dashboard", "/user", "/product"]); // Set を使用
+      const ProtectedRoutes = new Set(["/dashboard", "/user", "/product"]);
+  
+      if (!nextUrl || !nextUrl.pathname) {
+        console.error("Error: nextUrl or nextUrl.pathname is undefined", nextUrl);
+        return false;
+      }
   
       if (!isLoggedIn && ProtectedRoutes.has(nextUrl.pathname)) {
-        return new Response(null, { status: 302, headers: { Location: "/login" } });
+        return NextResponse.redirect(new URL("/login", nextUrl.origin)); // 絶対URLを指定
       }
   
       if (isLoggedIn && nextUrl.pathname.startsWith("/login")) {
-        return new Response(null, { status: 302, headers: { Location: "/dashboard" } });
+        return NextResponse.redirect(new URL("/dashboard", nextUrl.origin)); // 絶対URLを指定
       }
   
       return true;
