@@ -62,17 +62,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Invalid email or password." }, { status: 401 });
     }
 
-      // 認証処理 `redirect: false` を追加してリダイレクトを防ぐ
-      const result = await signIn("credentials", { email, password, redirect: false });
+    // 認証処理 `redirect: false` を追加してリダイレクトを防ぐ
+    const result = await signIn("credentials", { email, password, redirect: false });
 
-      if (!result) {
-        return NextResponse.json({ message: "Login failed" }, { status: 401 });
-      }
+    if (!result) {
+      return NextResponse.json({ message: "Login failed" }, { status: 401 });
+    }
 
-    // 認証成功
+    // 認証成功時のレスポンス
     return NextResponse.json({ message: "Login successful", redirectTo: "/dashboard" });
+
   } catch (error) {
+
     console.error("Unexpected error:", error);
     return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+    
   }
 }
