@@ -14,6 +14,7 @@ export default async function Dashboard() {
           {session?.user?.name || "Guest"} {/* 名前がない場合は"Guest"を表示 */}
         </span>
       </h2>
+      <p>{JSON.stringify(session)}</p>
     </div>
     );
   }
