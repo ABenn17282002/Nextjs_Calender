@@ -4,6 +4,7 @@ import { prisma } from "./lib/prisma";
 import Credentials from "next-auth/providers/credentials";
 import { SignInSchema } from "./lib/zod";
 import { verifyPassword } from "@/lib/hashFunctions"; // 検証関数
+import { NextResponse } from "next/server";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -28,6 +29,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const user = await prisma.user.findUnique({
           where: { email },
+          select: { id: true, name: true, email: true, password: true, salt: true, role: true }, 
         });
 
         if (!user || !user.password || !user.salt) {
@@ -41,12 +43,33 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         );
 
         if (!isPasswordValid) return null;
+        console.log("Authorize - User found:", user);
 
-        return { id: user.id, name: user.name, email: user.email }; 
+        return { id: user.id, name: user.name, email: user.email, role: user.role }; 
       },
     }),
   ],
   callbacks: {
+    async jwt({ token, user }) {
+      if(user) token.role = user.role
+      console.log(token)
+      return token
+    },
+    
+    async session({ session, token }) {
+      if (token.sub && session.user) {
+        session.user.id = token.sub;
+      }
+
+      if (session.user) {
+        session.user.name = token.name;
+        session.user.email = token.email ?? ""; 
+        session.user.role = token.role as string | "";
+      }
+    
+      console.log("Session Callback - After:", session);
+      return session;
+    },
     authorized({ auth, request }) {
       const nextUrl = request.nextUrl;
       const isLoggedIn = !!auth?.user;

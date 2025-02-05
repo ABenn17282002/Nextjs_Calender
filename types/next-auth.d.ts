@@ -1,16 +1,19 @@
-import type { DefaultSession } from "next-auth";
+import type { DefaultSession, DefaultUser } from "next-auth";
 
 declare module "next-auth" {
+  interface User extends DefaultUser {
+    id: string; // カスタムフィールド
+    role?: string; 
+  }
+
   interface Session {
-    user: {
-      id: string; // カスタムフィールド
-      name?: string | null;
-      email?: string | null;
-    } & DefaultSession["user"];
+    user: User & DefaultSession["user"]; // 拡張した User 型を適用
+    role?: string; 
   }
 
   interface JWT {
     id: string; // カスタムフィールド
     email?: string | null;
+    role?: string; 
   }
 }
