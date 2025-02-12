@@ -16,11 +16,22 @@ export default async function Navbar() {
     <div className="flex items-center gap-3">
         <ul className="hidden md:flex items-center gap-4 mr-5 font-semibold text-gray-600 hover:text-gray-800">
             <li><Link href="/">Home</Link></li>
-            <li><Link href="/product">Product</Link></li>
-            <li><Link href="/dashboard">Dashboard</Link></li>
-            <li><Link href="/user">Users</Link></li>
+            {session && (
+              <>
+              <li>
+                <Link href="/product">Product</Link>
+              </li>
+              <li>
+                <Link href="/dashboard">Dashboard</Link>
+              </li>
+              {session.user.role === "admin" ? (
+                <li>
+                  <Link href="/user">Users</Link>
+                </li>
+              ) : null}
+            </>
+        )}
         </ul>
-
         {session?.user ? (
             <div className="flex gap-3 items-center">
               <div className="flex flex-col justify-center space-y-1">
@@ -31,7 +42,6 @@ export default async function Navbar() {
                   {session.user.role}
                 </span>
               </div>
-
               <Image
                 src={session.user.image || "/default-avatar.png"}
                 alt="avatar"
@@ -39,7 +49,6 @@ export default async function Navbar() {
                 height={64}
                 className="w-8 h-8 rounded-full"
               />
-
               {/* サインイン時のみ表示 */}
               <LogoutButton />
             </div>
