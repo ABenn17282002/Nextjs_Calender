@@ -5,6 +5,7 @@ import Credentials from "next-auth/providers/credentials";
 import { SignInSchema } from "./lib/zod";
 import { verifyPassword } from "@/lib/hashFunctions"; // 検証関数
 import { NextResponse } from "next/server";
+import Google from "next-auth/providers/google";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -13,6 +14,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn:"/login",
   },
   providers: [
+    Google({
+      clientId: process.env.AUTH_GOOGLE_ID!,
+      clientSecret: process.env.AUTH_GOOGLE_SECRET!,
+      authorization: {
+        params: {
+          prompt: "consent",
+          access_type: "offline",
+          response_type: "code",
+          code_challenge_method: "S256",
+        },
+      },
+    }),
     Credentials({
       credentials: {
         email: {},
@@ -50,6 +63,58 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
+    async signIn({ user, account }) {
+      // OAuth プロバイダーの場合（Google, GitHub, Twitter, Facebookなど）
+      if (account?.provider && account.provider !== "credentials") {
+        const existingUser = await prisma.user.findUnique({
+          where: { email: user.email! },
+          include: { accounts: true }, // 既存のアカウント情報も取得
+        });
+    
+        if (existingUser) {
+          // 既存のユーザーがいるが、OAuth アカウントが未リンクの場合
+          const accountExists = existingUser.accounts.some(acc => acc.provider === account.provider);
+    
+          if (!accountExists) {
+            await prisma.account.create({
+              data: {
+                userId: existingUser.id,
+                provider: account.provider,
+                providerAccountId: account.providerAccountId,
+                type: account.type,
+                access_token: account.access_token,
+                refresh_token: account.refresh_token,
+                expires_at: account.expires_at,
+              },
+            });
+          }
+        } else {
+          // 初めてのユーザーなので新規作成
+          await prisma.user.create({
+            data: {
+              email: user.email!,
+              name: user.name,
+              image: user.image,
+              salt: null, // OAuth は salt 不要
+              password: null, // OAuth は password も不要
+              accounts: {
+                create: {
+                  provider: account.provider,
+                  providerAccountId: account.providerAccountId,
+                  type: account.type,
+                  access_token: account.access_token,
+                  refresh_token: account.refresh_token,
+                  expires_at: account.expires_at,
+                },
+              },
+            },
+          });
+        }
+      }
+      return true;
+    },
+    
+
     async jwt({ token, user }) {
       if(user) token.role = user.role
       console.log(token)
@@ -70,6 +135,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       console.log("Session Callback - After:", session);
       return session;
     },
+    
     authorized({ auth, request }) {
       const nextUrl = request.nextUrl;
       const isLoggedIn = !!auth?.user;
