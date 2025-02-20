@@ -6,6 +6,7 @@ import { SignInSchema } from "./lib/zod";
 import { verifyPassword } from "@/lib/hashFunctions"; // 検証関数
 import { NextResponse } from "next/server";
 import Google from "next-auth/providers/google";
+import Github from "next-auth/providers/github";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -14,6 +15,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn:"/login",
   },
   providers: [
+    Github({
+      clientId: process.env.AUTH_GITHUB_ID!,
+      clientSecret: process.env.AUTH_GITHUB_SECRET!,
+    }),
     Google({
       clientId: process.env.AUTH_GOOGLE_ID!,
       clientSecret: process.env.AUTH_GOOGLE_SECRET!,

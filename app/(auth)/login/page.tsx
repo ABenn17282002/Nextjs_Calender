@@ -1,5 +1,5 @@
 import FormLogin from '@/components/auth/FormLogin';
-import { GoogleButton } from '@/components/SocialButton';
+import { GithubButton, GoogleButton } from '@/components/SocialButton';
 import React from 'react';
 
 export default function Login() {
@@ -11,6 +11,7 @@ export default function Login() {
         <p className="mx-4 mb-0 text-center font-semibold text-gray-600">or</p>
       </div>
       <GoogleButton />
+      <GithubButton/>
     </div>
   );
 }
